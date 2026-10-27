@@ -1,0 +1,19 @@
+# Java / Maven build output
+target/
+*.class
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Heap and thread dumps (can be large / contain data)
+*.hprof
+*.tdump
+
+# Local secrets
+.env
+*.token
+ansible/vault-password*
