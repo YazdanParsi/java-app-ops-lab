@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Lint shell scripts (ShellCheck)
+        run: |
+          if compgen -G "scripts/*.sh" > /dev/null; then
+            shellcheck scripts/*.sh
+          else
+            echo "No scripts yet - skipping"
+          fi
+
+      - name: Set up JDK 21
+        if: hashFiles('app/pom.xml') != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build the WAR (Maven)
+        if: hashFiles('app/pom.xml') != ''
+        run: mvn -B -f app/pom.xml package
+
+      - name: Build the container image
+        if: hashFiles('app/Dockerfile') != ''
+        run: docker build -t lab-app:ci app/
+
+      - name: Validate Kubernetes manifests (kubeconform)
+        if: hashFiles('k8s/*.yaml') != ''
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -strict -summary k8s/
