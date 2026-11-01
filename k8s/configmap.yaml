@@ -4,5 +4,5 @@ metadata:
   name: lab-config
   namespace: lab
 data:
-  # The JVM sizes its heap from the container memory limit (75 % of it)
-  JAVA_OPTS: "-XX:MaxRAMPercentage=75.0"
+  # The JVM sizes its heap from the container memory limit (50 %, leaving room for non-heap memory)
+  JAVA_OPTS: "-XX:MaxRAMPercentage=50.0 -XX:+ExitOnOutOfMemoryError"

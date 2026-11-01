@@ -60,7 +60,7 @@ ansible-playbook playbook.yml                # second run should show changed=0
 
 ## Runbooks
 
-- [ ] `runbooks/01-oomkilled.md` – container killed for exceeding its memory limit
+- [x] `runbooks/01-oomkilled.md` – container killed for exceeding its memory limit
 - [ ] `runbooks/02-readiness-probe.md` – pod Running but not Ready, Service has no endpoints
 - [ ] `runbooks/03-thread-deadlock.md` – app freezes, diagnosed with a thread dump
 - [ ] `runbooks/04-service-down-on-vm.md` – systemd service down on the VM
