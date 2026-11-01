@@ -63,12 +63,12 @@ ansible-playbook playbook.yml                # second run should show changed=0
 - [x] `runbooks/01-oomkilled.md` – container killed for exceeding its memory limit
 - [x] `runbooks/02-readiness-probe.md` – pod Running but not Ready: a bad readiness probe blocks the rollout
 - [x] `runbooks/03-thread-deadlock.md` – app freezes, diagnosed with a thread dump
-- [ ] `runbooks/04-service-down-on-vm.md` – systemd service down on the VM
+- [x] `runbooks/04-service-down-on-vm.md` – systemd service down on the VM
 
 ## Progress
 
-- [ ] App runs on WildFly in Docker, configured with jboss-cli
-- [ ] Deployed to Kubernetes with probes, limits, ConfigMap and Secret
-- [ ] Health-check script passes ShellCheck
-- [ ] Deployed to a Linux VM with Ansible (idempotent second run)
-- [ ] Incident runbooks written from real command output
+- [x] App runs on WildFly in Docker, configured with jboss-cli
+- [x] Deployed to Kubernetes with probes, limits, ConfigMap and Secret
+- [x] Health-check script passes ShellCheck
+- [x] Deployed to a Linux VM with Ansible (idempotent second run)
+- [x] Incident runbooks written from real command output
