@@ -17,3 +17,8 @@ target/
 .env
 *.token
 ansible/vault-password*
+target/
+ansible/inventory.ini
+*.retry
+.DS_Store
+.idea/
