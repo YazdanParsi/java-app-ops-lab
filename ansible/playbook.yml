@@ -1,0 +1,84 @@
+---
+- name: Deploy the lab Java app to a Linux VM
+  hosts: app
+  become: true
+  vars:
+    app_dir: /opt/lab-app
+    image: localhost/lab-app:1.0
+    container_name: lab
+    app_port: 8080
+    java_opts: "-Xms128m -Xmx512m"
+
+  tasks:
+    - name: Install Podman and curl
+      ansible.builtin.apt:
+        name: [podman, curl]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Copy the application source to the VM
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../app/"
+        dest: "{{ app_dir }}/app/"
+        mode: preserve
+      register: app_source
+
+    - name: Check whether the image already exists
+      ansible.builtin.command: podman image exists {{ image }}
+      register: image_check
+      changed_when: false
+      failed_when: false
+
+    - name: Build the container image (only when the source changed or the image is missing)
+      ansible.builtin.command: podman build -t {{ image }} {{ app_dir }}/app
+      when: app_source.changed or image_check.rc != 0
+      notify: Restart lab-app
+
+    - name: Install the systemd unit
+      ansible.builtin.template:
+        src: lab-app.service.j2
+        dest: /etc/systemd/system/lab-app.service
+        mode: "0644"
+      notify: Restart lab-app
+
+    - name: Enable and start the service
+      ansible.builtin.systemd:
+        name: lab-app
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply pending restarts now
+      ansible.builtin.meta: flush_handlers
+
+    - name: Install the health-check script
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../scripts/healthcheck.sh"
+        dest: /usr/local/bin/healthcheck.sh
+        mode: "0755"
+
+    - name: Wait until WildFly answers
+      ansible.builtin.uri:
+        url: "http://localhost:{{ app_port }}/app/health"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 30
+      delay: 5
+
+    - name: Run the health check
+      ansible.builtin.command: /usr/local/bin/healthcheck.sh -u http://localhost:{{ app_port }}/app/health
+      register: healthcheck
+      changed_when: false
+
+    - name: Show the health-check result
+      ansible.builtin.debug:
+        var: healthcheck.stdout_lines
+
+  handlers:
+    - name: Restart lab-app
+      ansible.builtin.systemd:
+        name: lab-app
+        state: restarted
+        daemon_reload: true

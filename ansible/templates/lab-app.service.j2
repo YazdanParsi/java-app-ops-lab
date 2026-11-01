@@ -1,0 +1,14 @@
+[Unit]
+Description=Lab Java app on WildFly (Podman container)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/podman rm -f {{ container_name }}
+ExecStart=/usr/bin/podman run --rm --name {{ container_name }} -p {{ app_port }}:8080 -e JAVA_OPTS="{{ java_opts }}" {{ image }}
+ExecStop=/usr/bin/podman stop -t 20 {{ container_name }}
+
+[Install]
+WantedBy=multi-user.target
