@@ -15,8 +15,10 @@ jobs:
 
       - name: Lint shell scripts (ShellCheck)
         run: |
-          if compgen -G "scripts/*.sh" > /dev/null; then
-            shellcheck scripts/*.sh
+          shopt -s nullglob
+          files=(scripts/*.sh azure/*.sh)
+          if [ ${#files[@]} -gt 0 ]; then
+            shellcheck "${files[@]}"
           else
             echo "No scripts yet - skipping"
           fi
