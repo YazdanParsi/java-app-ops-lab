@@ -2,13 +2,14 @@
 
 ![CI](https://github.com/YazdanParsi/java-app-ops-lab/actions/workflows/ci.yml/badge.svg)
 
-Hands-on lab for **operating an enterprise Java application**: a small Jakarta EE app on **WildFly**, run in **Docker**, deployed to **Kubernetes** with probes and resource limits, and to a **Linux VM with Ansible and systemd**. HTTPS is configured with a custom certificate through WildFly Elytron. The app contains deliberate faults (memory leak, thread deadlock) so incidents can be reproduced, diagnosed and documented as runbooks.
+Hands-on lab for **operating an enterprise Java application**: a small Jakarta EE app on **WildFly**, run in **Docker**, deployed to **Kubernetes** with probes and resource limits, and to a **Linux VM with Ansible and systemd**. HTTPS is configured with a custom certificate through WildFly Elytron, and the Kubernetes deployment is managed with **GitOps (Argo CD)**. The app contains deliberate faults (memory leak, thread deadlock) so incidents can be reproduced, diagnosed and documented as runbooks.
 
 ## Architecture
 
 ```
 Java servlet app ─► WildFly (Docker image, configured with jboss-cli)
                     ├─► Kubernetes / minikube: Deployment, Service, ConfigMap, Secret, probes, limits
+                    │     └─ deployed by Argo CD from k8s/ in this repo (auto-sync, prune, self-heal)
                     └─► Linux VM: Ansible ─► Podman + systemd unit ─► health-check script
 ```
 
@@ -18,6 +19,7 @@ Java servlet app ─► WildFly (Docker image, configured with jboss-cli)
 |---|---|
 | `app/` | Maven web app (`/health`, `/leak`, `/freeze`, `/work`), `config.cli` (WildFly config as code), multi-stage `Dockerfile` |
 | `k8s/` | Namespace, ConfigMap (`JAVA_OPTS`), Secret, Deployment (readiness/liveness probes, requests/limits), Service |
+| `argocd/lab-app.yaml` | Argo CD `Application`: deploys `k8s/` from `main` with automated sync, prune and self-heal |
 | `scripts/healthcheck.sh` | Bash health check: HTTP, disk, memory; exit code 0/1 for monitoring |
 | `scripts/check-cert.sh` | TLS certificate expiry check; exit code 0/1/2/3 (OK/WARNING/CRITICAL/UNKNOWN) for Nagios/Zabbix-style monitoring |
 | `ansible/` | Playbook that installs Podman, builds the image, installs a systemd unit and runs the health check (idempotent) |
@@ -49,6 +51,21 @@ cp inventory.ini.example inventory.ini       # put the VM's IP in it
 ansible all -m ping
 ansible-playbook playbook.yml                # second run should show changed=0
 ```
+
+**GitOps with Argo CD**
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd --server-side --force-conflicts \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl -n argocd port-forward svc/argocd-server 8090:443     # UI: https://localhost:8090
+argocd login localhost:8090 --username admin --insecure
+kubectl apply -f argocd/lab-app.yaml                          # Argo CD now deploys k8s/ from GitHub
+argocd app get lab-app                                        # Synced to main (<commit>), Healthy
+```
+Verified behaviour:
+- **Deploy by commit** – changing `replicas` in `k8s/deployment.yaml` and pushing created a new history entry and a second pod; no `kubectl` against the cluster.
+- **Self-heal** – `kubectl scale --replicas=3` was reverted to Git's value within seconds (`Synced -> OutOfSync -> partial sync -> Synced`).
+- **Rollback** – `git revert` + push rolled the cluster back; `argocd app history` shows every deployed commit.
 
 **HTTPS with a custom certificate (WildFly Elytron)**
 ```bash
@@ -87,4 +104,5 @@ scripts/check-cert.sh -H localhost -p 8443 -d 30                       # expiry 
 - [x] Health-check script passes ShellCheck
 - [x] Deployed to a Linux VM with Ansible (idempotent second run)
 - [x] HTTPS with a custom certificate (keytool, Elytron), expiry monitoring script
+- [x] GitOps with Argo CD: automated sync, self-heal and rollback via `git revert`
 - [x] Incident runbooks written from real command output
