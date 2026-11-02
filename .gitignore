@@ -22,3 +22,8 @@ ansible/inventory.ini
 *.retry
 .DS_Store
 .idea/
+
+# TLS lab: keystores hold private keys, exported certificates are regenerated locally
+*.p12
+*.jks
+tls/
